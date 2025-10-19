@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify AI Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --spotify-green: #1DB954;
+      --spotify-black: #0a0a0a;
+      --spotify-dark: #121212;
+      --spotify-gray: #1a1a1a;
+      --spotify-light-gray: #b3b3b3;
+      --spotify-white: #FFFFFF;
+      --glass-bg: rgba(18, 18, 18, 0.8);
+      --glass-border: rgba(255, 255, 255, 0.08);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #000000;
+      color: var(--spotify-white);
+      min-height: 100vh;
+    }
+
+    /* Navigation */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 1rem 2rem;
+    }
+
+    .nav-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .nav-logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--spotify-green);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+
+    .nav-link {
+      font-weight: 500;
+      color: var(--spotify-light-gray);
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .nav-link:hover {
+      color: var(--spotify-white);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-link.active {
+      color: var(--spotify-green);
+      background: rgba(29, 185, 84, 0.1);
+    }
+
+    .sign-out-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      color: var(--spotify-light-gray);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .sign-out-btn:hover {
+      background: rgba(255, 50, 50, 0.1);
+      border-color: rgba(255, 50, 50, 0.3);
+      color: #ff5555;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Pages */
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    /* Sign In */
+    .sign-in-section {
+      text-align: center;
+      padding: 100px 20px;
+    }
+
+    .sign-in-btn {
+      background: linear-gradient(135deg, var(--spotify-green) 0%, #1ed760 100%);
+      color: white;
+      border: none;
+      padding: 18px 48px;
+      font-size: 18px;
+      font-weight: 700;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 24px rgba(29, 185, 84, 0.3);
+    }
+
+    .sign-in-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(29, 185, 84, 0.4);
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 100px 20px;
+    }
+
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(29, 185, 84, 0.2);
+      border-top-color: var(--spotify-green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 2rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Card */
+    .card {
+      background: var(--glass-bg);
+      border-radius: 16px;
+      padding: 2rem;
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(20px);
+      margin-bottom: 2rem;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 1.5em;
+      font-weight: 700;
+    }
+
+    /* Grid */
+    .grid {
+      display: grid;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+
+    /* Track/Artist List */
+    .track-list, .artist-list {
+      list-style: none;
+    }
+
+    .track-item, .artist-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      background: rgba(255, 255, 255, 0.02);
+      transition: all 0.3s ease;
+    }
+
+    .track-item:hover, .artist-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateX(4px);
+    }
+
+    .track-img, .artist-img {
+      width: 50px;
+      height: 50px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .artist-img {
+      border-radius: 50%;
+    }
+
+    .track-info, .artist-info {
+      flex: 1;
+    }
+
+    .track-name, .artist-name {
+      font-weight: 600;
+      color: var(--spotify-white);
+    }
+
+    .track-artist, .artist-genres {
+      font-size: 0.85em;
+      color: var(--spotify-light-gray);
+    }
+
+    .track-rank, .artist-rank {
+      font-weight: 900;
+      font-size: 1.3em;
+      color: var(--spotify-green);
+      width: 40px;
+    }
+
+    /* Stats */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-box {
+      background: var(--spotify-gray);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      border: 1px solid var(--glass-border);
+    }
+
+    .stat-value {
+      font-size: 2.5em;
+      font-weight: 900;
+      color: var(--spotify-green);
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+      font-size: 0.9em;
+      color: var(--spotify-light-gray);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Chart Container */
+    .chart-container {
+      position: relative;
+      height: 350px;
+      margin-top: 1rem;
+    }
+
+    /* Recent Tracks Timeline */
+    .timeline {
+      list-style: none;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .timeline-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem;
+      border-left: 3px solid var(--spotify-green);
+      margin-bottom: 0.5rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+    }
+
+    .timeline-img {
+      width: 40px;
+      height: 40px;
+      border-radius: 4px;
+    }
+
+    .timeline-time {
+      font-size: 0.8em;
+      color: var(--spotify-light-gray);
+      min-width: 80px;
+    }
+
+    /* Scrollbar */
+    .timeline::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .timeline::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+
+    .timeline::-webkit-scrollbar-thumb {
+      background: var(--spotify-green);
+      border-radius: 4px;
+    }
+
+    /* Utility */
+    .hidden {
+      display: none;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--spotify-green) 0%, #1ed760 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    h2 {
+      font-size: 2em;
+      margin-bottom: 1.5rem;
+    }
+
+    .section {
+      margin-bottom: 3rem;
+    }
+
+    /* Persona cards */
+    .persona-card {
+      background: linear-gradient(135deg, rgba(29, 185, 84, 0.1) 0%, rgba(74, 158, 255, 0.1) 100%);
+      border: 1px solid rgba(29, 185, 84, 0.3);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .persona-label {
+      font-size: 0.9em;
+      color: var(--spotify-green);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 0.5rem;
+    }
+
+    .persona-value {
+      font-size: 1.8em;
+      font-weight: 700;
+      color: var(--spotify-white);
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    .comparison-item {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid var(--glass-border);
+    }
+
+    .comparison-period {
+      font-size: 0.8em;
+      color: var(--spotify-green);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 1rem;
+    }
+
+    .comparison-data {
+      font-size: 0.9em;
+      line-height: 1.8;
+    }
+
+    .comparison-data strong {
+      color: var(--spotify-white);
+    }
+
+    @media (max-width: 768px) {
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* AI Habit Cards */
+    .habit-card {
+      background: var(--glass-bg);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid var(--glass-border);
+      border-left: 4px solid var(--spotify-green);
+      transition: all 0.3s ease;
+    }
+
+    .habit-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(29, 185, 84, 0.2);
+    }
+
+    .habit-category {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 1rem;
+    }
+
+    .habit-category.temporal {
+      background: rgba(80, 155, 245, 0.2);
+      color: #509BF5;
+    }
+
+    .habit-category.mood {
+      background: rgba(255, 107, 53, 0.2);
+      color: #FF6B35;
+    }
+
+    .habit-category.genre {
+      background: rgba(157, 78, 221, 0.2);
+      color: #9D4EDD;
+    }
+
+    .habit-category.behavior {
+      background: rgba(29, 185, 84, 0.2);
+      color: var(--spotify-green);
+    }
+
+    .habit-title {
+      font-size: 1.3em;
+      font-weight: 700;
+      color: var(--spotify-white);
+      margin-bottom: 0.8rem;
+    }
+
+    .habit-description {
+      color: var(--spotify-light-gray);
+      line-height: 1.7;
+      margin-bottom: 1rem;
+    }
+
+    .habit-confidence {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9em;
+    }
+
+    .confidence-bar {
+      flex: 1;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--spotify-green), #1ed760);
+      border-radius: 10px;
+      transition: width 0.8s ease;
+    }
+
+    .confidence-text {
+      color: var(--spotify-green);
+      font-weight: 700;
+    }
+
+    /* Custom Cursor Follower */
+    .cursor-follower {
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(29, 185, 84, 0.8) 0%, rgba(29, 185, 84, 0.3) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 9999;
+      transition: transform 0.15s ease-out, opacity 0.2s ease;
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      box-shadow: 0 0 20px rgba(29, 185, 84, 0.6), 0 0 40px rgba(29, 185, 84, 0.3);
+    }
+
+    .cursor-follower.active {
+      opacity: 1;
+    }
+
+    /* Metric Info Tooltips */
+    .metric-info {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(29, 185, 84, 0.2);
+      color: var(--spotify-green);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: help;
+      transition: all 0.3s ease;
+    }
+
+    .info-icon:hover {
+      background: rgba(29, 185, 84, 0.4);
+      transform: scale(1.1);
+    }
+
+    .tooltip {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--spotify-dark);
+      border: 1px solid var(--spotify-green);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      min-width: 200px;
+      max-width: 300px;
+      font-size: 0.85em;
+      line-height: 1.5;
+      color: var(--spotify-light-gray);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: var(--spotify-green);
+    }
+
+    .info-icon:hover .tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-5px);
+    }
+
+    .stat-box {
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <!-- Custom Cursor Follower -->
+  <div class="cursor-follower"></div>
+  <!-- Navigation -->
+  <nav>
+    <div class="nav-container">
+      <div class="nav-logo">Spotify AI Dashboard</div>
+      <div class="nav-links">
+        <a class="nav-link active" onclick="showPage('overview')">Overview</a>
+        <a class="nav-link" onclick="showPage('habits')">Habits</a>
+        <a class="nav-link" onclick="showPage('persona')">Persona</a>
+        <button class="sign-out-btn" id="sign-out-btn" onclick="signOut()" style="display: none;">Sign Out</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Sign In Section -->
+    <div id="sign-in-section" class="sign-in-section">
+      <h1>Spotify AI Dashboard</h1>
+      <p style="margin: 2rem 0; color: var(--spotify-light-gray); font-size: 1.2em;">
+        Discover your listening patterns and music preferences powered by AI
+      </p>
+      <button class="sign-in-btn" onclick="signIn()">Sign in with Spotify</button>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading" class="hidden">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p style="font-size: 1.3em; color: var(--spotify-light-gray);">Loading your music data...</p>
+      </div>
+    </div>
+
+    <!-- Overview Page -->
+    <div id="overview-page" class="page hidden">
+      <div class="section">
+        <h1>Your Music Overview</h1>
+
+        <!-- Audio Profile Stats -->
+        <div id="audio-stats" class="stat-grid"></div>
+
+        <!-- Top Artists & Tracks -->
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Top Artists (Last 4 Weeks)</div>
+            </div>
+            <ul class="artist-list" id="top-artists"></ul>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Top Tracks (Last 4 Weeks)</div>
+            </div>
+            <ul class="track-list" id="top-tracks"></ul>
+          </div>
+        </div>
+
+        <!-- Top Genres Chart -->
+        <div class="card" id="genres-card" style="display: none;">
+          <div class="card-header">
+            <div class="card-title">Your Top Genres</div>
+          </div>
+          <div class="chart-container">
+            <canvas id="genres-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Recently Played -->
+        <div class="card" id="recent-card" style="display: none;">
+          <div class="card-header">
+            <div class="card-title">Recently Played</div>
+          </div>
+          <ul class="timeline" id="recently-played"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Habits Page -->
+    <div id="habits-page" class="page hidden">
+      <div class="section">
+        <h1>Your Listening Habits</h1>
+
+        <!-- AI-Generated Habits -->
+        <div id="ai-habits-container" style="display: none;">
+          <h2 style="font-size: 1.5em; margin-bottom: 1rem; color: var(--spotify-light-gray);">AI-Detected Patterns</h2>
+          <div id="ai-habits-grid" class="grid grid-2"></div>
+        </div>
+
+        <!-- Habit Stats -->
+        <div id="habit-stats" class="stat-grid"></div>
+
+        <!-- Time Pattern Charts -->
+        <div class="grid grid-2">
+          <div class="card" id="hourly-card" style="display: none;">
+            <div class="card-header">
+              <div class="card-title">Listening by Hour</div>
+            </div>
+            <div class="chart-container">
+              <canvas id="hourly-chart"></canvas>
+            </div>
+          </div>
+
+          <div class="card" id="daily-card" style="display: none;">
+            <div class="card-header">
+              <div class="card-title">Listening by Day</div>
+            </div>
+            <div class="chart-container">
+              <canvas id="daily-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio Profile Radar -->
+        <div class="card" id="audio-radar-card" style="display: none;">
+          <div class="card-header">
+            <div class="card-title">Your Audio Profile</div>
+          </div>
+          <div class="chart-container">
+            <canvas id="audio-radar"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Persona Page -->
+    <div id="persona-page" class="page hidden">
+      <div class="section">
+        <h1>Your Listener Persona</h1>
+
+        <!-- AI-Generated Persona -->
+        <div id="ai-persona-container" style="display: none;">
+          <div class="card" style="background: linear-gradient(135deg, rgba(29, 185, 84, 0.1) 0%, rgba(157, 78, 221, 0.1) 100%); border: 1px solid rgba(29, 185, 84, 0.3);">
+            <div style="text-align: center; margin-bottom: 2rem;">
+              <div style="font-size: 0.9em; color: var(--spotify-green); font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem;">Your Archetype</div>
+              <div id="ai-archetype" style="font-size: 2.5em; font-weight: 900; background: linear-gradient(135deg, var(--spotify-green) 0%, #9D4EDD 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></div>
+            </div>
+            <div style="display: grid; gap: 1.5rem;">
+              <div>
+                <div style="font-weight: 700; color: var(--spotify-green); margin-bottom: 0.5rem; text-transform: uppercase; font-size: 0.85em; letter-spacing: 1px;">Personality</div>
+                <div id="ai-personality" style="color: var(--spotify-light-gray); line-height: 1.7;"></div>
+              </div>
+              <div>
+                <div style="font-weight: 700; color: var(--spotify-green); margin-bottom: 0.5rem; text-transform: uppercase; font-size: 0.85em; letter-spacing: 1px;">Listening Style</div>
+                <div id="ai-listening-style" style="color: var(--spotify-light-gray); line-height: 1.7;"></div>
+              </div>
+              <div>
+                <div style="font-weight: 700; color: var(--spotify-green); margin-bottom: 0.5rem; text-transform: uppercase; font-size: 0.85em; letter-spacing: 1px;">Recommendations for You</div>
+                <ul id="ai-recommendations" style="color: var(--spotify-light-gray); line-height: 1.9; padding-left: 1.5rem;"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loyalty & Mainstream Score -->
+        <div class="grid grid-2">
+          <div class="persona-card">
+            <div class="persona-label">Artist Loyalty Score</div>
+            <div class="persona-value" id="loyalty-score">--</div>
+            <p style="margin-top: 1rem; color: var(--spotify-light-gray);">
+              Percentage of your favorite artists that remain consistent across all time periods
+            </p>
+          </div>
+
+          <div class="persona-card">
+            <div class="persona-label">Mainstream Score</div>
+            <div class="persona-value" id="mainstream-score">--</div>
+            <p style="margin-top: 1rem; color: var(--spotify-light-gray);">
+              Based on the average popularity of your top tracks (0-100)
+            </p>
+          </div>
+        </div>
+
+        <!-- Time Range Comparison -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Your Favorites Over Time</div>
+          </div>
+          <div class="comparison-grid" id="time-comparison"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let sessionId = null;
+    let data = null;
+    let charts = {};
+
+    // Custom cursor follower
+    const cursorFollower = document.querySelector('.cursor-follower');
+    let mouseX = 0, mouseY = 0;
+    let followerX = 0, followerY = 0;
+
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      cursorFollower.classList.add('active');
+    });
+
+    document.addEventListener('mouseleave', () => {
+      cursorFollower.classList.remove('active');
+    });
+
+    function animateCursor() {
+      const speed = 0.15;
+      followerX += (mouseX - followerX) * speed;
+      followerY += (mouseY - followerY) * speed;
+
+      cursorFollower.style.left = followerX + 'px';
+      cursorFollower.style.top = followerY + 'px';
+
+      requestAnimationFrame(animateCursor);
+    }
+    animateCursor();
+
+    // Metric descriptions
+    const metricDescriptions = {
+      energy: "Intensity and activity level of your music. High energy = fast, loud, and intense.",
+      danceability: "How suitable your tracks are for dancing based on tempo, rhythm, and beat strength.",
+      valence: "Musical positiveness. High valence = happy, cheerful; Low valence = sad, angry.",
+      tempo: "Average beats per minute (BPM) of your music.",
+      acousticness: "Confidence that the track is acoustic (non-electronic).",
+      artistDiversity: "How varied your artist selection is. Higher means more diverse taste.",
+      genreDiversity: "Number of unique genres in your listening history.",
+      tracksPerDay: "Average number of tracks you listen to per day.",
+      peakHour: "The hour of day when you listen to music most frequently.",
+      peakDay: "The day of week when you listen to music most frequently.",
+      loyaltyScore: "Percentage of your favorite artists that remain consistent across all time periods.",
+      mainstreamScore: "How popular your music taste is based on Spotify's popularity metrics (0-100)."
+    };
+
+    function createInfoIcon(metricKey) {
+      const description = metricDescriptions[metricKey];
+      if (!description) return '';
+
+      return `
+        <span class="info-icon">
+          ?
+          <span class="tooltip">${description}</span>
+        </span>
+      `;
+    }
+
+    // Page navigation
+    function showPage(pageName) {
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      const page = document.getElementById(`${pageName}-page`);
+      if (page) page.classList.add('active');
+
+      document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+      const activeLink = Array.from(document.querySelectorAll('.nav-link')).find(link =>
+        link.textContent.toLowerCase().includes(pageName)
+      );
+      if (activeLink) activeLink.classList.add('active');
+    }
+
+    // Check for session
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      sessionId = urlParams.get('session');
+      if (sessionId) loadAnalytics();
+    });
+
+    function signIn() {
+      window.location.href = 'http://127.0.0.1:3000/login';
+    }
+
+    function signOut() {
+      sessionId = null;
+      data = null;
+      document.getElementById('sign-out-btn').style.display = 'none';
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      document.getElementById('sign-in-section').classList.remove('hidden');
+      window.history.pushState({}, '', '/');
+    }
+
+    async function loadAnalytics() {
+      document.getElementById('sign-in-section').classList.add('hidden');
+      document.getElementById('loading').classList.remove('hidden');
+
+      try {
+        const res = await fetch('http://127.0.0.1:3000/api/analytics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId })
+        });
+
+        if (!res.ok) throw new Error('Failed to load analytics');
+
+        data = await res.json();
+        console.log('Analytics data:', data);
+
+        document.getElementById('sign-out-btn').style.display = 'block';
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('overview-page').classList.add('active');
+
+        renderOverview(data.overview);
+        renderHabits(data.habits);
+        renderPersona(data.persona);
+
+        // Fetch AI insights
+        loadAIInsights(data);
+
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to load analytics. Please try again.');
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('sign-in-section').classList.remove('hidden');
+      }
+    }
+
+    async function loadAIInsights(analytics) {
+      try {
+        // Fetch AI habits
+        const habitsRes = await fetch('http://127.0.0.1:3000/api/ai/habits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ analytics, sessionId })
+        });
+
+        if (habitsRes.ok) {
+          const habitsData = await habitsRes.json();
+          renderAIHabits(habitsData.habits);
+        }
+
+        // Fetch AI persona
+        const personaRes = await fetch('http://127.0.0.1:3000/api/ai/persona', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ analytics, sessionId })
+        });
+
+        if (personaRes.ok) {
+          const personaData = await personaRes.json();
+          renderAIPersona(personaData.persona);
+        }
+
+      } catch (error) {
+        console.error('AI insights error:', error);
+        // Fail silently - basic analytics still work
+      }
+    }
+
+    function renderAIHabits(habits) {
+      if (!habits || habits.length === 0) return;
+
+      const container = document.getElementById('ai-habits-container');
+      const grid = document.getElementById('ai-habits-grid');
+
+      const habitsHTML = habits.map(habit => `
+        <div class="habit-card">
+          <div class="habit-category ${habit.category}">${habit.category}</div>
+          <div class="habit-title">${habit.title}</div>
+          <div class="habit-description">${habit.description}</div>
+          <div class="habit-confidence">
+            <div class="confidence-bar">
+              <div class="confidence-fill" style="width: ${habit.confidence}%;"></div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      grid.innerHTML = habitsHTML;
+      container.style.display = 'block';
+    }
+
+    function renderAIPersona(persona) {
+      if (!persona) return;
+
+      document.getElementById('ai-archetype').textContent = persona.archetype;
+      document.getElementById('ai-personality').textContent = persona.personality;
+      document.getElementById('ai-listening-style').textContent = persona.listening_style;
+
+      const recsHTML = persona.recommendations.map(rec => `<li>${rec}</li>`).join('');
+      document.getElementById('ai-recommendations').innerHTML = recsHTML;
+
+      document.getElementById('ai-persona-container').style.display = 'block';
+    }
+
+    function renderOverview(overview) {
+      // Audio Profile Stats
+      if (overview.audioProfile) {
+        const statsHTML = `
+          <div class="stat-box">
+            <div class="stat-value">${overview.audioProfile.energy}%</div>
+            <div class="stat-label metric-info">Energy ${createInfoIcon('energy')}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${overview.audioProfile.danceability}%</div>
+            <div class="stat-label metric-info">Danceability ${createInfoIcon('danceability')}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${overview.audioProfile.valence}%</div>
+            <div class="stat-label metric-info">Positivity ${createInfoIcon('valence')}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${overview.audioProfile.tempo}</div>
+            <div class="stat-label metric-info">Avg BPM ${createInfoIcon('tempo')}</div>
+          </div>
+        `;
+        document.getElementById('audio-stats').innerHTML = statsHTML;
+      }
+
+      // Top Artists
+      if (overview.topArtists && overview.topArtists.length > 0) {
+        const artistsHTML = overview.topArtists.map(artist => `
+          <li class="artist-item">
+            <span class="artist-rank">#${artist.rank}</span>
+            ${artist.image ? `<img src="${artist.image}" class="artist-img" alt="${artist.name}">` : ''}
+            <div class="artist-info">
+              <div class="artist-name">${artist.name}</div>
+              ${artist.genres && artist.genres.length > 0 ?
+                `<div class="artist-genres">${artist.genres.slice(0, 2).join(', ')}</div>` : ''}
+            </div>
+            <div style="color: var(--spotify-light-gray);">${artist.popularity}%</div>
+          </li>
+        `).join('');
+        document.getElementById('top-artists').innerHTML = artistsHTML;
+      }
+
+      // Top Tracks
+      if (overview.topTracks && overview.topTracks.length > 0) {
+        const tracksHTML = overview.topTracks.map(track => `
+          <li class="track-item">
+            <span class="track-rank">#${track.rank}</span>
+            ${track.image ? `<img src="${track.image}" class="track-img" alt="${track.name}">` : ''}
+            <div class="track-info">
+              <div class="track-name">${track.name}</div>
+              <div class="track-artist">${track.artist}</div>
+            </div>
+          </li>
+        `).join('');
+        document.getElementById('top-tracks').innerHTML = tracksHTML;
+      }
+
+      // Top Genres Chart
+      if (overview.topGenres && overview.topGenres.length > 0) {
+        document.getElementById('genres-card').style.display = 'block';
+        const ctx = document.getElementById('genres-chart').getContext('2d');
+        charts.genres = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: overview.topGenres.map(g => g.name),
+            datasets: [{
+              label: 'Count',
+              data: overview.topGenres.map(g => g.count),
+              backgroundColor: 'rgba(29, 185, 84, 0.8)',
+              borderColor: '#1DB954',
+              borderWidth: 2,
+              borderRadius: 8
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                ticks: { color: '#b3b3b3' }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: '#b3b3b3', maxRotation: 45, minRotation: 45 }
+              }
+            }
+          }
+        });
+      }
+
+      // Recently Played
+      if (overview.recentlyPlayed && overview.recentlyPlayed.length > 0) {
+        document.getElementById('recent-card').style.display = 'block';
+        const recentHTML = overview.recentlyPlayed.map(item => {
+          const date = new Date(item.played_at);
+          const timeAgo = getTimeAgo(date);
+          return `
+            <li class="timeline-item">
+              <div class="timeline-time">${timeAgo}</div>
+              ${item.image ? `<img src="${item.image}" class="timeline-img" alt="${item.name}">` : ''}
+              <div>
+                <div style="font-weight: 600;">${item.name}</div>
+                <div style="font-size: 0.85em; color: var(--spotify-light-gray);">${item.artist}</div>
+              </div>
+            </li>
+          `;
+        }).join('');
+        document.getElementById('recently-played').innerHTML = recentHTML;
+      }
+    }
+
+    function renderHabits(habits) {
+      // Habit Stats
+      if (habits.variety) {
+        const statsHTML = `
+          <div class="stat-box">
+            <div class="stat-value">${habits.variety.artistDiversity}%</div>
+            <div class="stat-label metric-info">Artist Diversity ${createInfoIcon('artistDiversity')}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${habits.variety.genreDiversity}</div>
+            <div class="stat-label metric-info">Unique Genres ${createInfoIcon('genreDiversity')}</div>
+          </div>
+          ${habits.velocity ? `
+            <div class="stat-box">
+              <div class="stat-value">${habits.velocity.tracksPerDay}</div>
+              <div class="stat-label metric-info">Tracks/Day ${createInfoIcon('tracksPerDay')}</div>
+            </div>
+          ` : ''}
+          ${habits.timePatterns ? `
+            <div class="stat-box">
+              <div class="stat-value">${formatHour(habits.timePatterns.mostActiveHour)}</div>
+              <div class="stat-label metric-info">Peak Hour ${createInfoIcon('peakHour')}</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${habits.timePatterns.mostActiveDay}</div>
+              <div class="stat-label metric-info">Peak Day ${createInfoIcon('peakDay')}</div>
+            </div>
+          ` : ''}
+        `;
+        document.getElementById('habit-stats').innerHTML = statsHTML;
+      }
+
+      // Hourly Chart
+      if (habits.timePatterns && habits.timePatterns.hourly.some(h => h > 0)) {
+        document.getElementById('hourly-card').style.display = 'block';
+        const ctx = document.getElementById('hourly-chart').getContext('2d');
+        charts.hourly = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: Array.from({length: 24}, (_, i) => formatHour(i)),
+            datasets: [{
+              label: 'Tracks',
+              data: habits.timePatterns.hourly,
+              borderColor: '#1DB954',
+              backgroundColor: 'rgba(29, 185, 84, 0.1)',
+              tension: 0.4,
+              fill: true,
+              borderWidth: 3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                ticks: { color: '#b3b3b3' }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: '#b3b3b3', maxRotation: 45, minRotation: 45 }
+              }
+            }
+          }
+        });
+      }
+
+      // Daily Chart
+      if (habits.timePatterns && habits.timePatterns.daily.some(d => d > 0)) {
+        document.getElementById('daily-card').style.display = 'block';
+        const ctx = document.getElementById('daily-chart').getContext('2d');
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        charts.daily = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: days,
+            datasets: [{
+              label: 'Tracks',
+              data: habits.timePatterns.daily,
+              backgroundColor: 'rgba(29, 185, 84, 0.8)',
+              borderColor: '#1DB954',
+              borderWidth: 2,
+              borderRadius: 8
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                ticks: { color: '#b3b3b3' }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: '#b3b3b3' }
+              }
+            }
+          }
+        });
+      }
+
+      // Audio Profile Radar
+      if (data.overview && data.overview.audioProfile) {
+        document.getElementById('audio-radar-card').style.display = 'block';
+        const ctx = document.getElementById('audio-radar').getContext('2d');
+        const profile = data.overview.audioProfile;
+        charts.radar = new Chart(ctx, {
+          type: 'radar',
+          data: {
+            labels: ['Energy', 'Danceability', 'Positivity', 'Acousticness', 'Speechiness'],
+            datasets: [{
+              label: 'Your Profile',
+              data: [profile.energy, profile.danceability, profile.valence, profile.acousticness, profile.speechiness],
+              borderColor: '#1DB954',
+              backgroundColor: 'rgba(29, 185, 84, 0.2)',
+              borderWidth: 3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              r: {
+                beginAtZero: true,
+                max: 100,
+                grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                pointLabels: { color: '#b3b3b3', font: { size: 13 } },
+                ticks: { display: false }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    function renderPersona(persona) {
+      // Loyalty & Mainstream Scores
+      document.getElementById('loyalty-score').textContent = `${persona.loyaltyScore}%`;
+      document.getElementById('mainstream-score').textContent = `${persona.mainstreamScore}/100`;
+
+      // Add info icons to persona stats
+      const loyaltyLabel = document.querySelector('#loyalty-score').parentElement.querySelector('p');
+      const mainstreamLabel = document.querySelector('#mainstream-score').parentElement.querySelector('p');
+      if (loyaltyLabel && !loyaltyLabel.innerHTML.includes('info-icon')) {
+        loyaltyLabel.innerHTML = `<span class="metric-info">Percentage of your favorite artists that remain consistent across all time periods ${createInfoIcon('loyaltyScore')}</span>`;
+      }
+      if (mainstreamLabel && !mainstreamLabel.innerHTML.includes('info-icon')) {
+        mainstreamLabel.innerHTML = `<span class="metric-info">Based on the average popularity of your top tracks (0-100) ${createInfoIcon('mainstreamScore')}</span>`;
+      }
+
+      // Time Range Comparison
+      if (persona.timeRangeComparison) {
+        const comp = persona.timeRangeComparison;
+        const compHTML = `
+          <div class="comparison-item">
+            <div class="comparison-period">Last 4 Weeks</div>
+            <div class="comparison-data">
+              <strong>Top Artist:</strong> ${comp.short.topArtist}<br>
+              <strong>Top Track:</strong> ${comp.short.topTrack}<br>
+              <strong>Top Genre:</strong> ${comp.short.topGenre}
+            </div>
+          </div>
+          <div class="comparison-item">
+            <div class="comparison-period">Last 6 Months</div>
+            <div class="comparison-data">
+              <strong>Top Artist:</strong> ${comp.medium.topArtist}<br>
+              <strong>Top Track:</strong> ${comp.medium.topTrack}
+            </div>
+          </div>
+          <div class="comparison-item">
+            <div class="comparison-period">All Time</div>
+            <div class="comparison-data">
+              <strong>Top Artist:</strong> ${comp.long.topArtist}<br>
+              <strong>Top Track:</strong> ${comp.long.topTrack}
+            </div>
+          </div>
+        `;
+        document.getElementById('time-comparison').innerHTML = compHTML;
+      }
+    }
+
+    function formatHour(hour) {
+      if (hour === 0) return '12 AM';
+      if (hour === 12) return '12 PM';
+      if (hour < 12) return `${hour} AM`;
+      return `${hour - 12} PM`;
+    }
+
+    function getTimeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      if (seconds < 60) return 'Just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.floor(hours / 24);
+      return `${days}d ago`;
+    }
+  </script>
+</body>
+</html>
