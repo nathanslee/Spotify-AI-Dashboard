@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import fetch from "node-fetch";
 import OpenAI from "openai";
+import crypto from "crypto";
 
 // ---------- CONFIGURATION ----------
 dotenv.config({ path: "./.env" });
@@ -23,6 +24,29 @@ const openai = new OpenAI({
 
 // Session storage for user tokens
 const userSessions = new Map();
+
+// Persistent user cache (survives sign-out/sign-in) - keyed by Spotify user ID
+const userCache = new Map();
+
+// ---------- HELPER FUNCTIONS ----------
+
+// Generate a hash from analytics data to detect changes
+function generateDataHash(analytics) {
+  const relevantData = {
+    topArtists: analytics.overview?.topArtists?.slice(0, 10).map(a => a.name),
+    topGenres: analytics.overview?.topGenres?.slice(0, 5).map(g => g.name),
+    audioProfile: analytics.overview?.audioProfile,
+    variety: analytics.habits?.variety,
+    timePatterns: analytics.habits?.timePatterns,
+    velocity: analytics.habits?.velocity,
+    loyaltyScore: analytics.persona?.loyaltyScore,
+    mainstreamScore: analytics.persona?.mainstreamScore
+  };
+
+  return crypto.createHash('sha256')
+    .update(JSON.stringify(relevantData))
+    .digest('hex');
+}
 
 // ---------- SPOTIFY HELPER FUNCTIONS ----------
 
@@ -118,15 +142,35 @@ app.get("/callback", async (req, res) => {
       return res.status(500).send("Failed to get access token from Spotify");
     }
 
+    // Fetch user profile to get Spotify user ID
+    const userProfile = await spotifyRequest('/me', tokenData.access_token);
+    const spotifyUserId = userProfile.id;
+
+    console.log("✅ User authenticated:", spotifyUserId);
+
+    // Initialize persistent cache for this user if it doesn't exist
+    if (!userCache.has(spotifyUserId)) {
+      userCache.set(spotifyUserId, {
+        dataHash: null,
+        habits: null,
+        persona: null,
+        lastUpdated: null
+      });
+      console.log("🆕 Created new user cache for:", spotifyUserId);
+    } else {
+      console.log("♻️  Existing user cache found for:", spotifyUserId);
+    }
+
     const sessionId = Math.random().toString(36).substring(7);
 
     userSessions.set(sessionId, {
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token,
       expires_at: Date.now() + tokenData.expires_in * 1000,
+      spotifyUserId: spotifyUserId  // Link session to user's persistent cache
     });
 
-    console.log("✅ Authentication successful, session created:", sessionId);
+    console.log("✅ Session created:", sessionId);
     res.redirect(`http://127.0.0.1:3000/index.html?session=${sessionId}`);
   } catch (error) {
     console.error("OAuth error:", error);
@@ -363,6 +407,19 @@ app.post("/api/ai/habits", async (req, res) => {
   }
 
   try {
+    const session = userSessions.get(sessionId);
+    const spotifyUserId = session.spotifyUserId;
+    const userCacheData = userCache.get(spotifyUserId);
+    const currentDataHash = generateDataHash(analytics);
+
+    // Check if we have cached habits and data hasn't changed
+    if (userCacheData.habits && userCacheData.dataHash === currentDataHash) {
+      console.log("✅ Returning cached AI habits (data unchanged) for user:", spotifyUserId);
+      return res.json({ habits: userCacheData.habits });
+    }
+
+    console.log("🔄 Generating new AI habits (data changed or no cache) for user:", spotifyUserId);
+
     const prompt = `Analyze this Spotify listening data and identify 3-5 specific behavioral patterns or habits.
 
 For each habit, provide:
@@ -405,6 +462,14 @@ Respond with ONLY valid JSON in this exact format (no markdown, no code blocks):
     const jsonText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const result = JSON.parse(jsonText);
 
+    // Cache the results in persistent user cache
+    userCacheData.habits = result.habits;
+    userCacheData.dataHash = currentDataHash;
+    userCacheData.lastUpdated = Date.now();
+    userCache.set(spotifyUserId, userCacheData);
+
+    console.log("✅ AI habits cached successfully for user:", spotifyUserId);
+
     res.json(result);
 
   } catch (error) {
@@ -421,6 +486,19 @@ app.post("/api/ai/persona", async (req, res) => {
   }
 
   try {
+    const session = userSessions.get(sessionId);
+    const spotifyUserId = session.spotifyUserId;
+    const userCacheData = userCache.get(spotifyUserId);
+    const currentDataHash = generateDataHash(analytics);
+
+    // Check if we have cached persona and data hasn't changed
+    if (userCacheData.persona && userCacheData.dataHash === currentDataHash) {
+      console.log("✅ Returning cached AI persona (data unchanged) for user:", spotifyUserId);
+      return res.json({ persona: userCacheData.persona });
+    }
+
+    console.log("🔄 Generating new AI persona (data changed or no cache) for user:", spotifyUserId);
+
     const prompt = `Create a detailed music listener persona based on this Spotify data.
 
 Listening Data:
@@ -462,6 +540,14 @@ Respond with ONLY valid JSON in this exact format (no markdown, no code blocks):
     // Remove markdown code blocks if present
     const jsonText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const result = JSON.parse(jsonText);
+
+    // Cache the results in persistent user cache
+    userCacheData.persona = result.persona;
+    userCacheData.dataHash = currentDataHash;
+    userCacheData.lastUpdated = Date.now();
+    userCache.set(spotifyUserId, userCacheData);
+
+    console.log("✅ AI persona cached successfully for user:", spotifyUserId);
 
     res.json(result);
 

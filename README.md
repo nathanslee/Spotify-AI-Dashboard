@@ -130,6 +130,33 @@ Spotify API → Express Backend → Python Analytics → AI Analysis → Chart.j
    - Top 50 artists (medium-term)
    - Audio features for all unique tracks
 
+### AI Insights Caching System
+
+The app implements an intelligent caching system to preserve AI-generated habits and persona data:
+
+1. **Data Hash Generation**: When analytics data is fetched, a SHA-256 hash is created from key metrics (top artists, genres, audio profile, etc.)
+2. **Cache Check**: Before calling OpenAI API, the system checks if:
+   - Cached insights exist for this user (keyed by Spotify user ID)
+   - The data hash matches the current data
+3. **Smart Regeneration**: AI insights are only regenerated when:
+   - User's Spotify data has changed (different top artists, genres, etc.)
+   - First time a user accesses the dashboard
+   - Cache has been cleared
+4. **Performance Benefits**:
+   - Instant loading of AI insights on page refresh
+   - **Persists across sign-out/sign-in** - returning users get cached insights immediately
+   - Reduced OpenAI API costs
+   - Consistent user experience
+   - Only updates when meaningful data changes occur
+
+The cache is stored in-memory **per Spotify user ID** (not per session) and includes:
+- `dataHash`: SHA-256 hash of analytics data
+- `habits`: Cached AI-generated habits
+- `persona`: Cached AI-generated persona
+- `lastUpdated`: Timestamp of last cache update
+
+This means users will see their cached AI insights even after signing out and back in, as long as their listening data hasn't changed significantly.
+
 ### Analysis Pipeline
 
 #### Python Analytics Engine (`analyze.py`)
